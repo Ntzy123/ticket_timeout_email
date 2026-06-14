@@ -1,0 +1,52 @@
+{
+    "url": "https://heimdallr.onewo.com/api/task/courier/admin/task/work-order/queryCourierTaskWorkOrderEtlPage",
+    "headers": {
+        "Host": "heimdallr.onewo.com",
+        "Connection": "keep-alive",
+        "sec-ch-ua-platform": "\"Windows\"",
+        "Authorization": "sys:web:tokeneyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiLmnY7ku5Xnp5EiLCJ1c2VySWQiOiJjMTY3Y2Y5NDcwNGY0YjdhYWE4YjUzZGNmMmQ3Zjk4NSIsIm5pa2VOYW1lIjoi5p2O5LuV56eRIiwiY29tcGFueUlkIjoiMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAiLCJleHAiOjE3NDU3MTg5NDB9.j9I3R-kctxcB3CQzMSsBcUXa8OVes9ux5UedJzaWE8WWwOxKKCwRVWgHKubcu2aD-rdQFFQfZuRYMAieu3WAV-b8GrwIstAqydscpr9d20mEcGkQzc8-IWF0LeUFMOCOF7CWJzFNtFqZrCbDzijpYzV791vx-xT-r1r14tymd5s",
+        "timestamp": "1745634203289",
+        "type": "heimdallr",
+        "sec-ch-ua": "\"Google Chrome\";v=\"135\", \"Not-A.Brand\";v=\"8\", \"Chromium\";v=\"135\"",
+        "sec-ch-ua-mobile": "?0",
+        "nonce": "8cba3dc2-1162-477e-8bb7-94d13b70c362",
+        "Accept": "application/json, text/plain, */*",
+        "Content-Type": "application/json",
+        "sign": "FuaZzyWV0dtWSLW4KraOAa3+STpKrDqmHjp5p5paF/O85W4G/X9z7NWsbn99DtX2fdeFnSNpT1gyWh01UK0NWh59KNLLQAB2RamPB9qCh8GdKSVwXUr97HOhx8FLkqcKxUZ+KsTgmDx00aI7A7OPXcyLh3ohiHtLnNhG8OOLe2YX0kgJQfBs1ieCIrucCNM6Zggq3Qvr9uBtUlUgSp+I1PNBcBofaicMhzas96yxi5lcXtI4oVRb+tHmha4RAI8FLhEJAO6wIJqVFMaYAiQh0BnEYyfqM6WsmDP4BVZyP2TnBG9nZs2SDNFQu0uozBlRMmL2nPRLnQ1wyxP954bVUw==",
+        "systemId": "0e9e407230db4436a56ca1d0df23c255",
+        "Need-Permission": "false",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "USER": "c167cf94704f4b7aaa8b53dcf2d7f985",
+        "COMPANY": "00000000000000000000000000000000",
+        "System-Tag": "web",
+        "Origin": "https://heimdallr.onewo.com",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+        "Referer": "https://heimdallr.onewo.com/remote-event-center-new/",
+        "Accept-Language": "zh-CN,zh;q=0.9",
+        "Cookie": "acw_tc=0ae5a7e317456325190965284e006ab92915f016161e0b7b98f8c5fca780e5",
+        "Accept-Encoding": "gzip, deflate",
+        "Content-Length": "392"
+    },
+    "json": {
+        "workorderNo": "",
+        "createMobile": "",
+        "projectId": "52010017",
+        "workorderStatus": "[\"1\",\"1001\",\"1002\",\"1003\",\"1004\",\"1005\",\"1013\",\"1014\",\"4040\",\"6\",\"3\",\"4\",\"5\",\"1006\",\"1007\",\"1008\",\"1015\",\"4041\",\"10\",\"1017\",\"1091\"]",
+        "sourceKeyList": [],
+        "date1": [
+          "2025-01-28",
+          "2025-04-28"
+        ],
+        "fmWoType": "PM",
+        "current": 1,
+        "limit": 100,
+        "startTime": "2025-01-28 00:00:00",
+        "endTime": "2025-04-28 23:59:59",
+        "workOrderTypeNoList": [
+          "5"
+        ],
+        "type": "1"
+    }
+}
