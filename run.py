@@ -95,12 +95,12 @@ def send_mail(title, body):
     return False
 
 
-def send_mail_with_retry(title, body, ticket_timeout_str, retry_window=25):
+def send_mail_with_retry(title, body, ticket_timeout_list=None, retry_window=25):
     """发送邮件，失败后在 retry_window 分钟内自动重试
 
     参数:
         title, body: 邮件标题和正文
-        ticket_timeout_str: 工单超时时间，用于超时后停止重试
+        ticket_timeout_list: 所有工单的超时时间列表，用于工单全超时后停止重试
         retry_window: 重试时间窗口（分钟），默认 25
     返回:
         True 表示最终发送成功，False 表示失败
@@ -117,13 +117,18 @@ def send_mail_with_retry(title, body, ticket_timeout_str, retry_window=25):
         if send_mail(title, body):
             return True
 
-        # 检查工单是否已超时，超时则不再重试
-        if ticket_timeout_str:
+        # 检查所有工单是否都已超时，如果全部超时则停止重试
+        if ticket_timeout_list:
             try:
-                target = datetime.strptime(ticket_timeout_str, "%Y-%m-%d %H:%M:%S")
                 now = datetime.now(china_tz).replace(tzinfo=None)
-                if now >= target:
-                    log.info('工单已超时，停止重试')
+                all_expired = True
+                for fb_time in ticket_timeout_list:
+                    target = datetime.strptime(fb_time, "%Y-%m-%d %H:%M:%S")
+                    if now < target:
+                        all_expired = False
+                        break
+                if all_expired:
+                    log.info('所有工单均已超时，停止重试')
                     return False
             except (ValueError, TypeError):
                 pass
@@ -162,58 +167,82 @@ def _cleanup_expired_scheduled():
             log.debug(f'清理 {len(expired)} 条已超时的工单调度记录')
 
 
-def _countdown_and_send(ticket_info):
-    """倒计时线程：等待至超时前 30 分钟，然后发送邮件（含重试）
+def _build_summary_body(tickets, now_str):
+    """将多条工单汇总成邮件正文"""
+    lines = [f"{now_str}\n你有 {len(tickets)} 条周期性工单即将超时，请及时处理！\n"]
+    lines.append("=" * 50)
+    for item in tickets:
+        lines.append(f"")
+        lines.append(f"编号：{item['workorderNo']}")
+        lines.append(f"{item.get('workorderDescription', '')}")
+        lines.append(f"接单人：{item.get('acceptName', '')}")
+        lines.append(f"超时时间：{item['feedBackTime']}")
+    lines.append("")
+    lines.append("=" * 50)
+    lines.append("（此邮件由系统自动发送）")
+    return "\n".join(lines)
 
-    此函数由 threading.Thread 调用，独立运行。
-    ticket_info 包含工单详细信息和计算好的等待秒数。
+
+def _batch_countdown_and_send(new_tickets, wait_seconds):
+    """批量倒计时线程：等待到最早工单的 30 分钟节点，然后重新查询并汇总发送
+
+    参数:
+        new_tickets: 本次调度的新工单列表（含完整信息）
+        wait_seconds: 需要等待的秒数（到最早工单的30分钟节点）
     """
-    workorder_no = ticket_info['workorderNo']
-    wait_seconds = ticket_info['_wait_seconds']
-    feed_back_time = ticket_info['feedBackTime']
-    description = ticket_info.get('workorderDescription', '')
-    accept_name = ticket_info.get('acceptName', '')
-
-    log.info(f'工单 [{workorder_no}] 倒计时 {wait_seconds:.0f} 秒后发送提醒')
+    log.info(f'批量倒计时，等待 {wait_seconds:.0f} 秒后汇总发送（共 {len(new_tickets)} 条工单）')
 
     if wait_seconds > 0:
-        time.sleep(wait_seconds)
+        # 分段睡眠，方便中途检查退出信号
+        slept = 0
+        chunk = 10  # 每 10 秒检查一次
+        while slept < wait_seconds:
+            time.sleep(min(chunk, wait_seconds - slept))
+            slept += min(chunk, wait_seconds - slept)
 
-    # 醒来后确认工单状态
-    china_tz = pytz.timezone('Asia/Shanghai')
-    now = datetime.now(china_tz).replace(tzinfo=None)
+    # 倒计时结束，重新查询 API，获取当前处于 30 分钟窗口内的所有工单
+    log.info('倒计时结束，重新查询工单数据')
     try:
-        target_time = datetime.strptime(feed_back_time, "%Y-%m-%d %H:%M:%S")
-    except (ValueError, TypeError):
-        log.error(f'工单 [{workorder_no}] 超时时间解析失败，跳过发送')
+        # 新建一个临时 TicketTimeoutPM 实例进行查询
+        tkpm = TicketTimeoutPM()
+        tkpm.query()
+
+        wait_start = time.time()
+        while tkpm.content is None:
+            if time.time() - wait_start > 60:
+                raise TimeoutError('查询完成但 content 仍为 None')
+            time.sleep(0.5)
+
+        alerting = tkpm.query_timeout()
+        alert_items = alerting.get('data', [])
+    except Exception as e:
+        log.error(f'倒计时后重新查询工单失败: {e}')
+        # 使用之前保存的 new_tickets 数据兜底发送
+        alert_items = new_tickets
+
+    if not alert_items:
+        log.info('倒计时后查询无处于 30 分钟窗口的工单，可能已处理完毕')
         return
 
-    if now >= target_time:
-        log.info(f'工单 [{workorder_no}] 已超时，跳过发送')
-        return
+    # 汇总成一条邮件发送
+    china_tz = pytz.timezone('Asia/Shanghai')
+    now_str = datetime.now(china_tz).strftime('%Y-%m-%d %H:%M:%S')
+    body = _build_summary_body(alert_items, now_str)
 
-    # 构造邮件正文
-    current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
-    body = f"{current_time_str}\n你有1条周期性工单即将超时，请及时处理！\n\n"
-    body += f"编号：{workorder_no}\n"
-    body += f"{description}\n"
-    body += f"接单人：{accept_name}\n"
-    body += f"超时时间：{feed_back_time}\n\n"
-    body += "（此邮件由系统自动发送）"
+    # 收集所有工单的超时时间，用于重试时检查是否全部已超时
+    timeout_list = [item['feedBackTime'] for item in alert_items]
 
-    # 发送邮件（25 分钟重试窗口）
-    success = send_mail_with_retry("周期性工单即将超时", body, feed_back_time, retry_window=25)
+    log.info(f'汇总发送 {len(alert_items)} 条工单提醒邮件')
+    success = send_mail_with_retry(
+        f"周期性工单即将超时（共 {len(alert_items)} 条）",
+        body,
+        ticket_timeout_list=timeout_list,
+        retry_window=25
+    )
     if success:
-        log.info(f'工单 [{workorder_no}] 提醒邮件发送成功')
+        log.info(f'工单提醒邮件发送成功（共 {len(alert_items)} 条）')
     else:
-        log.error(f'工单 [{workorder_no}] 提醒邮件发送失败（已达重试上限或工单已超时）')
-
-
-def _dispatch_countdown(ticket_info):
-    """为单个工单启动倒计时线程"""
-    thread = threading.Thread(target=_countdown_and_send, args=(ticket_info,), daemon=True)
-    thread.start()
-    return thread
+        log.error(f'工单提醒邮件发送失败（共 {len(alert_items)} 条，已达重试上限）')
 
 
 # ===== 工单查询循环 =====
@@ -258,23 +287,34 @@ def tkpm_query(tkpm):
                 time.sleep(COOLDOWN_NONE)
                 continue
 
-            log.info(f'发现 {len(new_tickets)} 条新工单即将超时，启动倒计时线程')
+            log.info(f'发现 {len(new_tickets)} 条新工单即将超时')
 
-            # 对每条新工单计算等待时间并启动线程
+            # 计算到最早工单 30 分钟节点的等待时间
             china_tz = pytz.timezone('Asia/Shanghai')
+            now = datetime.now(china_tz).replace(tzinfo=None)
+            earliest_wait = None
             for t in new_tickets:
                 try:
                     target_time = datetime.strptime(t['feedBackTime'], "%Y-%m-%d %H:%M:%S")
                     alert_time = target_time - timedelta(minutes=30)
-                    now = datetime.now(china_tz).replace(tzinfo=None)
-                    wait_seconds = max(0, (alert_time - now).total_seconds())
-                    t['_wait_seconds'] = wait_seconds
+                    wait = max(0, (alert_time - now).total_seconds())
+                    if earliest_wait is None or wait < earliest_wait:
+                        earliest_wait = wait
                 except (ValueError, TypeError):
-                    t['_wait_seconds'] = 0
+                    pass
 
-                _dispatch_countdown(t)
+            if earliest_wait is None:
+                earliest_wait = 0
 
-            log.info(f'已调度 {len(new_tickets)} 条工单的倒计时，冷却 30 分钟')
+            # 启动一个批量倒计时线程
+            thread = threading.Thread(
+                target=_batch_countdown_and_send,
+                args=(new_tickets, earliest_wait),
+                daemon=True
+            )
+            thread.start()
+
+            log.info(f'已调度 {len(new_tickets)} 条工单的批量倒计时（等待 {earliest_wait:.0f} 秒），冷却 30 分钟')
             time.sleep(COOLDOWN_HAS)
 
         except TimeoutError as e:
