@@ -1,7 +1,7 @@
 # ticket.py
 
 import json, requests
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 import pytz
 
 
@@ -29,7 +29,9 @@ class Ticket:
                 self.json[key] = input_param[i]
             elif i == 4 and input_param[i] is not None:
                 if time_range == "today":
-                    time_range = [str(date.today() - timedelta(days=1)), str(date.today())]
+                    china_tz = pytz.timezone('Asia/Shanghai')
+                    beijing_today = datetime.now(china_tz).date()
+                    time_range = [str(beijing_today - timedelta(days=1)), str(beijing_today)]
                 self.json[key[0]] = time_range
                 start = f"{time_range[0]} 00:00:00"
                 end = f"{time_range[1]} 23:59:59"
