@@ -48,7 +48,7 @@ class PersonLocationMonitor:
                 hour = now.hour
 
                 # 只在 0:00-6:00 工作
-                if hour < 0 or hour >= 6:
+                if hour >= 6:
                     time.sleep(300)
                     continue
 
@@ -57,15 +57,19 @@ class PersonLocationMonitor:
 
                 if alerts:
                     bucket = self._hour_bucket(now)
+                    a = alerts[0]
+                    dist_str = format_distance(float(a.get('distance_m', 0)))
                     if bucket != self._last_hour_bucket:
                         now_str = now.strftime('%Y-%m-%d %H:%M:%S')
-                        body = self._build_body(alerts[0], now_str)
-                        log.info(f'定位告警触发：{alerts[0]}')
+                        body = self._build_body(a, now_str)
+                        log.info(f'定位告警触发：{a["name"]} 距项目 {dist_str}')
                         if self.send_callback:
                             self.send_callback('夜班人员靠近项目告警', body)
                         self._last_hour_bucket = bucket
                     else:
                         log.debug(f'本小时({bucket})已发过告警，跳过')
+                else:
+                    log.debug(f'定位检查完毕，无满足告警条件的人员')
 
                 time.sleep(60)
 

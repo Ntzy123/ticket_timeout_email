@@ -28,7 +28,7 @@ def main():
 
     def on_location_alert(title, body):
         # 定位告警：简单发送，不重试、无超时列表
-        send_mail_with_retry(config, title, body, retry_window=0)
+        send_mail_with_retry(config, title, body, retry_window=2)
 
     # 工单超时监控（守护线程）
     tkpm = TicketTimeoutPM(send_callback=on_send)
