@@ -31,3 +31,21 @@ def format_distance(distance_m):
     if distance_m < 1000:
         return f"{int(distance_m)} m"
     return f"{distance_m / 1000:.2f} km"
+
+
+def sort_records(records):
+    """
+    对所有记录排序，优先级：
+    1. 在线且有定位（distance_m > 0），按距离升序
+    2. 在线但无定位（distance_m == 0）
+    3. 离线
+    """
+    def _key(r):
+        is_online = r.get('status') == '1'
+        dist = float(r.get('distance_m', 0))
+        if not is_online:
+            return (1, 0, 0)       # 离线 → 最后
+        if dist == 0:
+            return (0, 2, 0)       # 在线无定位 → 中间
+        return (0, 1, dist)        # 在线有定位 → 最前，按距离升序
+    return sorted(records, key=_key)

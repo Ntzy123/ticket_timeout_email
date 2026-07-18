@@ -8,8 +8,13 @@
 - 最新快照：`cache/person_device_status.json`
 - 历史记录：`cache/person_device_status_history.json`（最多 100 条，仅状态变化或距离变动 >100m 时记录）
 - 上游 API：`https://heimdallr.onewo.com/api/headquarter/zyt/last/allDevice`
-- 查询人员：**李仕科**
-- 项目编号：`52010017`
+- 查询人员（按 project_code 分组查询）：
+
+| 人员 | 项目编号 |
+|------|----------|
+| 李仕科 | 52010017 |
+| 吴学亮 | 52010017 |
+| 李靖 | 52010020 |
 
 ---
 
@@ -35,6 +40,16 @@ GET /api/person-device-status/location-latest
       "name": "李仕科",
       "distance_m": 1234.56,
       "status": "1"
+    },
+    {
+      "name": "吴学亮",
+      "distance_m": 567.89,
+      "status": "1"
+    },
+    {
+      "name": "李靖",
+      "distance_m": 0,
+      "status": "0"
     }
   ]
 }
@@ -43,7 +58,7 @@ GET /api/person-device-status/location-latest
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `timestamp` | long | 查询时间戳（毫秒） |
-| `is_ok` | bool | 上游接口是否成功 |
+| `is_ok` | bool | 上游接口是否全部成功 |
 | `code` | string | 上游业务状态码 |
 | `records[].name` | string | 人员姓名 |
 | `records[].distance_m` | float | 距项目中心距离（米） |
@@ -55,7 +70,7 @@ GET /api/person-device-status/location-latest
 |---|---|
 | `404` | 调度线程尚未完成首次查询 (`{"error":"暂无数据"}`) |
 | `500` | 缓存文件损坏 (`{"error":"<异常信息>"}`) |
-| `200` (但 `is_ok=false`) | 上游查询失败，records 中的 `status` 为 `"0"`，`distance_m` 为 `0` |
+| `200` (但 `is_ok=false`) | 上游某项目查询失败，该项目的 records 中 `status` 为 `"0"`，`distance_m` 为 `0` |
 
 ---
 
@@ -65,7 +80,7 @@ GET /api/person-device-status/location-latest
 GET /api/person-device-status/location-history
 ```
 
-返回按时间顺序排列的位置变化记录。仅在 **状态变更** 或 **距离变化超过 100 米** 时写入，避免冗余。
+返回按时间顺序排列的位置变化记录。仅在 **状态变更** 或 **距离变化超过 100 米** 时写入，避免冗余。逐人独立判断，因此同一时间戳可能出现多条记录（多人同时变化）。
 
 - 最大保留 **100 条**，超出时自动丢弃最旧记录
 
@@ -78,6 +93,12 @@ GET /api/person-device-status/location-history
     "name": "李仕科",
     "status": "1",
     "distance_m": 1234.56
+  },
+  {
+    "timestamp": 1748428800000,
+    "name": "吴学亮",
+    "status": "1",
+    "distance_m": 567.89
   },
   {
     "timestamp": 1748432400000,
