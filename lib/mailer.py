@@ -24,7 +24,7 @@ def send_mail(config, title, body):
     receivers = config['receivers']
 
     message = MIMEText(body, "plain", "utf-8")
-    message["From"] = f"Ntzy <{mail_user}>"
+    message["From"] = f"Kyrian <{mail_user}>"
     message["To"] = ", ".join(receivers)
     message["Subject"] = Header(title, "utf-8")
 
